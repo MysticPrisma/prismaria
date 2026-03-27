@@ -140,6 +140,7 @@ scroll_x:       .res 1 ; x scroll position
 scroll_y:       .res 1 ; y scroll position
 scroll_nmt:     .res 1 ; nametable select (0-3 = $2000,$2400,$2800,$2C00)
 temp:           .res 1 ; temporary variable
+ptr:            .res 2 ; pointer of 16-bits
 
 .segment "BSS"
 nmt_update: .res 256 ; nametable update entry buffer for PPU update
@@ -405,6 +406,11 @@ gamepad_poll:
 ;
 
 .segment "RODATA"
+title_part_one: .byte 41,00,48,49,48,49,52,54,55,58,59,48,49,48,49,52,48,49,00,41
+title_part_two: .byte 41,00,50,60,50,61,53,56,57,53,53,50,51,50,61,53,50,51,00,41
+
+
+
 example_palette:
 .byte $0F,$30,$21,$11 ; bg0 title-screen - blue, bluelight, white
 .byte $0F,$09,$19,$29 ; bg1 green
@@ -700,6 +706,19 @@ draw_cursor:
 	sta oam+(3*4)+3
 	rts
 
+.proc draw_row
+    sta ptr
+    sty ptr+1
+    ldy #0
+loop:
+    lda (ptr), y
+    sta $2007
+    iny
+    dex
+    bne loop
+    rts
+.endproc
+
 setup_background:
 	; first nametable, start by clearing to empty
 	lda $2002 ; reset latch
@@ -724,35 +743,24 @@ setup_background:
 		sta $2007
 		dex
 		bne :-
-	; fill in an area in the middle with 1/2 checkerboard --
     ; Now here I will display my title
+
+    ; First Line
     ldy #6
     ldx #6
     jsr ppu_address_tile
     lda #39
     sta $2007
     lda #40
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
+    ldx #18
+    :
+        sta $2007
+        dex
+        bne :-
     lda #39
     sta $2007
     
+    ; Two Dots
     ldy #7
     ldx #6
     jsr ppu_address_tile
@@ -762,94 +770,25 @@ setup_background:
     jsr ppu_address_tile
     lda #41
     sta $2007
-
+    
+    ; Title
     ldy #8
     ldx #6
     jsr ppu_address_tile
-    lda #41
-    sta $2007
-    lda #00
-    sta $2007
-    lda #48
-    sta $2007
-    lda #49
-    sta $2007
-    lda #48
-    sta $2007
-    lda #49
-    sta $2007
-    lda #52
-    sta $2007
-    lda #54
-    sta $2007
-    lda #55
-    sta $2007
-    lda #58
-    sta $2007
-    lda #59
-    sta $2007
-    lda #48
-    sta $2007
-    lda #49
-    sta $2007
-    lda #48
-    sta $2007
-    lda #49
-    sta $2007
-    lda #52
-    sta $2007
-    lda #48
-    sta $2007
-    lda #49
-    sta $2007
-    lda #00
-    sta $2007
-    lda #41
-    sta $2007
+    lda #<title_part_one
+    ldy #>title_part_one
+    ldx #20
+    jsr draw_row
 
     ldy #9
     ldx #6
     jsr ppu_address_tile
-    lda #41
-    sta $2007
-    lda #00
-    sta $2007
-    lda #50
-    sta $2007
-    lda #60
-    sta $2007
-    lda #50
-    sta $2007
-    lda #61
-    sta $2007
-    lda #53
-    sta $2007
-    lda #56
-    sta $2007
-    lda #57
-    sta $2007
-    lda #53
-    sta $2007
-    sta $2007
-    lda #50
-    sta $2007
-    lda #51
-    sta $2007
-    lda #50
-    sta $2007
-    lda #61
-    sta $2007
-    lda #53
-    sta $2007
-    lda #50
-    sta $2007
-    lda #51
-    sta $2007
-    lda #00
-    sta $2007
-    lda #41
-    sta $2007
-
+    lda #<title_part_two
+    ldy #>title_part_two
+    ldx #20
+    jsr draw_row
+    
+    ; Two Dots
     ldy #10
     ldx #6
     jsr ppu_address_tile
@@ -859,34 +798,23 @@ setup_background:
     jsr ppu_address_tile
     lda #41
     sta $2007
-
+    
+    ; Second Line
     ldy #11
     ldx #6
     jsr ppu_address_tile
     lda #39
     sta $2007
     lda #40
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
-    sta $2007
+    ldx #18
+    :
+        sta $2007
+        dex
+        bne :-
     lda #39
     sta $2007
-
+    
+    ; Press Start
     ldy #15
     ldx #10
     jsr ppu_address_tile
@@ -912,7 +840,8 @@ setup_background:
     sta $2007
     lda #30
     sta $2007
-
+    
+    ; Company
     ldy #22
     ldx #6
     jsr ppu_address_tile
@@ -957,20 +886,6 @@ setup_background:
     lda #38
     sta $2007
  
-    ; This is my name Alan
-	;ldy #14
-    ;ldx #14
-    ;jsr ppu_address_tile
-
-    ;lda #1
-    ;sta $2007
-    ;lda #12
-    ;sta $2007
-    ;lda #1
-    ;sta $2007
-    ;lda #14
-    ;sta $2007
-
 	; second nametable, fill with simple pattern
 	lda #$24
 	sta $2006
