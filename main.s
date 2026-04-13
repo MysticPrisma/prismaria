@@ -408,6 +408,8 @@ gamepad_poll:
 .segment "RODATA"
 title_part_one: .byte 41,00,48,49,48,49,52,54,55,58,59,48,49,48,49,52,48,49,00,41
 title_part_two: .byte 41,00,50,60,50,61,53,56,57,53,53,50,51,50,61,53,50,51,00,41
+press_start: .byte 26,28,15,29,29,00,00,29,30,11,28,30
+company: .byte 
 
 
 
@@ -842,6 +844,7 @@ setup_background:
     sta $2007
     
     ; Company
+    37,2,10,2,6,0,23,35,29,30,19,13,0,26,28
     ldy #22
     ldx #6
     jsr ppu_address_tile

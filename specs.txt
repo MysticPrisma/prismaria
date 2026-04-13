@@ -1,3 +1,5 @@
 Width: 32 Tiles - 256px
 Height: 28 Tiles - 224px
 Tiles: 8px x 8px
+Assemble: ca65 main.s -o main.o
+Link: ld65 main.o -C nes.cfg -o main.nes
