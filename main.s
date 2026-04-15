@@ -1,7 +1,7 @@
 ;
-; example.s
-; Brad Smith (rainwarrior), 4/06/2014
-; http://rainwarrior.ca
+; main.s
+; Alan Gomez Pasillas, 16/08/2026
+; https://mysticprisma.github.io
 ;
 ; This is intended as an introductory example to NES programming with ca65.
 ; It covers the basic use of background, sprites, and the controller.
@@ -408,10 +408,19 @@ gamepad_poll:
 .segment "RODATA"
 title_part_one: .byte 41,00,48,49,48,49,52,54,55,58,59,48,49,48,49,52,48,49,00,41 ;20 chars
 title_part_two: .byte 41,00,50,60,50,61,53,56,57,53,53,50,51,50,61,53,50,51,00,41 ;20 chars
-press_start: .byte 26,28,15,29,29,00,00,29,30,11,28,30 ;12 chars
+;press_start: .byte 26,28,15,29,29,00,00,29,30,11,28,30 ;12 chars
+press_start: .byte 42,43,44,00,00,45,46,47 ;6 chars
 company: .byte 37,2,10,2,6,0,23,35,29,30,19,13,0,26,28,19,29,23,11,38 ;20 chars
 
-
+title_animation:
+.byte $0F
+.byte $21
+.byte $30
+.byte $30
+.byte $30
+.byte $30
+.byte $21
+.byte $0F
 
 example_palette:
 .byte $0F,$30,$21,$11 ; bg0 title-screen - blue, bluelight, white
@@ -497,6 +506,7 @@ main:
 	:
 @draw:
 	; draw everything and finish the frame
+    jsr animate_title
 	jsr draw_cursor
 	jsr ppu_update
 	; keep doing this forever!
@@ -721,6 +731,18 @@ loop:
     rts
 .endproc
 
+.proc animate_title
+    lda nmi_count
+    lsr
+    lsr
+    lsr
+    and #7
+    tax
+    lda title_animation, x
+    sta palette+1
+    rts
+.endproc
+
 setup_background:
 	; first nametable, start by clearing to empty
 	lda $2002 ; reset latch
@@ -817,12 +839,12 @@ setup_background:
     sta $2007
     
     ; Press Start
-    ldy #15
-    ldx #10
+    ldy #16
+    ldx #12
     jsr ppu_address_tile
     lda #<press_start
     ldy #>press_start
-    ldx #12
+    ldx #8
     jsr draw_row
     
     ; Company
