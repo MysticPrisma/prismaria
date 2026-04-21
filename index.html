@@ -6,12 +6,13 @@
         <div style="width:640px;height:480px;max-width:100%">
             <div id="game"></div>
         </div>
-
         <script>
             EJS_player = "#game";
-            EJS_core = "nes"; // Tells the engine to load the NES core
-            EJS_gameUrl = "main.nes"; // URL to your ROM file
+            EJS_core = "nes";
+            EJS_gameUrl = "main.nes";
             EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/"; 
+            EJS_buttons = {save_state: false, load_state: false};
+            EJS_coreConfig = {"savestate_auto_load": "false"};
         </script>
         <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
     </body>
