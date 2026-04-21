@@ -37,16 +37,6 @@
 ; I will leave it as an exercise for the curious to understand what is going on.
 ;
 
-; --- FamiStudio Engine Configuration ---
-.define FAMISTUDIO_CA65_ZP_SEGMENT   ZEROPAGE
-.define FAMISTUDIO_CA65_RAM_SEGMENT  BSS
-.define FAMISTUDIO_CA65_CODE_SEGMENT CODE
-
-; --- Global Settings ---
-FAMISTUDIO_CFG_NTSC_SUPPORT = 1 ; Support NTSC (standard NES)
-FAMISTUDIO_CFG_PAL_SUPPORT  = 0 ; Set to 1 only if you need PAL/Europe support
-FAMISTUDIO_CFG_DPCM_SUPPORT = 0 ; Set to 1 if you use samples
-
 ;
 ; iNES header
 ;
