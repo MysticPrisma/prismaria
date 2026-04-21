@@ -125,6 +125,16 @@ reset:
 	; enable the NMI for graphical updates, and jump to our main program
 	lda #%10001000
 	sta $2000
+
+    ; Initialize FamiStudio engine
+    ldx #<music_title
+    ldy #>music_title
+    lda #1                 ; 1 = NTSC, 0 = PAL
+    jsr famistudio_init
+
+    ; Play the first song (Song 0)
+    lda #0
+    jsr famistudio_music_play
 	jmp main
 
 ;
@@ -232,7 +242,7 @@ nmi:
 	ldx #0
 	stx nmi_ready
 @ppu_update_end:
-	; if this engine had music/sound, this would be a good place to play it
+    jsr famistudio_update
 	; unlock re-entry flag
 	lda #0
 	sta nmi_lock
@@ -891,6 +901,11 @@ setup_background:
 		dey
 		bne :--
 	rts
+
+
+    ; --- Sound Engine ---
+.include "famistudio_ca65.s"
+.include "msc-title.s"
 
 ;
 ; end of file
