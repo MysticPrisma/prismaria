@@ -3,36 +3,7 @@
 ; Alan Gomez Pasillas, 16/08/2026
 ; https://mysticprisma.github.io
 ;
-; This is intended as an introductory example to NES programming with ca65.
-; It covers the basic use of background, sprites, and the controller.
-; This does not demonstrate how to use sound.
-;
-; This is not intended as a ready-made game. It is only a very minimal
-; playground to assist getting started in NES programming. The idea here is
-; to get you past the most difficult parts of a minimal NES program setup
-; so that you can experiment from an almost blank slate.
-;
-; To use your own graphics, replace the two 4k tile banks provided.
-; They are named "background.chr" and "sprite.chr".
-;
-; The reset and nmi routines are provided as a simple working example of
-; these things. Writing these from scratch is a more advanced topic, so they
-; will not be fully explained here.
-;
-; Under "drawing utilities" are some very primitive routines for working
-; with the NES graphics. See the "main" section for examples of how to use them.
-;
-; Finally at the bottom you will find the "main" section that provides
-; a small example program. A cursor is shown. Pressing the d-pad will move
-;   - pressing the d-pad will move the cursor around the screen
-;   - pressing B will draw a tile to the screen
-;   - pressing A will draw several tiles to the screen
-;   - pressing SELECT will reset the background
-;   - holding START will demonstrate scrolling
-;
-; Please note that this example code is intended to be simple, not necessarily
-; efficient. I have tried to avoid optimization in favour of easier to understand code.
-;
+
 ; You may notice some odd behaviour when using the A button around the edges of the screen.
 ; I will leave it as an exercise for the curious to understand what is going on.
 ;
@@ -151,6 +122,7 @@ scroll_y:       .res 1 ; y scroll position
 scroll_nmt:     .res 1 ; nametable select (0-3 = $2000,$2400,$2800,$2C00)
 temp:           .res 1 ; temporary variable
 ptr:            .res 2 ; pointer of 16-bits
+state:          .res 1 ; 0 = title, 1 = level1, etc.
 
 .segment "BSS"
 nmt_update: .res 256 ; nametable update entry buffer for PPU update
@@ -443,13 +415,13 @@ example_palette:
 .byte $0F,$12,$22,$32 ; sp3 marine
 
 .segment "ZEROPAGE"
-cursor_x: .res 1
-cursor_y: .res 1
 temp_x:   .res 1
 temp_y:   .res 1
 
 .segment "CODE"
 main:
+    lda #0
+    sta state
 	; setup 
 	ldx #0
 	:
@@ -458,275 +430,39 @@ main:
 		inx
 		cpx #32
 		bcc :-
+
 	jsr setup_background
-	; center the cursor
-	lda #128
-	sta cursor_x
-	lda #120
-	sta cursor_y
 	; show the screen
-	jsr draw_cursor
 	jsr ppu_update
+
 	; main loop
-@loop:
+main_loop:
 	; read gamepad
 	jsr gamepad_poll
+
+    lda state
+    cmp #0
+    beq state_title
 	; respond to gamepad state
+	jmp main_loop
+
+state_title:
 	lda gamepad
 	and #PAD_START
 	beq :+
-		jsr push_start
-		jmp @draw ; start trumps everything, don't check other buttons
+        jsr start_game
+        jmp main_loop
 	:
-	jsr release_start ; releasing start restores scroll
-	lda gamepad
-	and #PAD_U
-	beq :+
-		jsr push_u
-	:
-	lda gamepad
-	and #PAD_D
-	beq :+
-		jsr push_d
-	:
-	lda gamepad
-	and #PAD_L
-	beq :+
-		jsr push_l
-	:
-	lda gamepad
-	and #PAD_R
-	beq :+
-		jsr push_r
-	:
-	lda gamepad
-	and #PAD_SELECT
-	beq :+
-		jsr push_select
-	:
-	lda gamepad
-	and #PAD_B
-	beq :+
-		jsr push_b
-	:
-	lda gamepad
-	and #PAD_A
-	beq :+
-		jsr push_a
-	:
-@draw:
-	; draw everything and finish the frame
     jsr animate_title
-	jsr draw_cursor
-	jsr ppu_update
-	; keep doing this forever!
-	jmp @loop
+    jsr ppu_update
+    jmp main_loop
 
-push_u:
-	dec cursor_y
-	; Y wraps at 240
-	lda cursor_y
-	cmp #240
-	bcc :+
-		lda #239
-		sta cursor_y
-	:
-	rts
-
-push_d:
-	inc cursor_y
-	; Y wraps at 240
-	lda cursor_y
-	cmp #240
-	bcc :+
-		lda #0
-		sta cursor_y
-	:
-	rts
-
-push_l:
-	dec cursor_x
-	rts
-
-push_r:
-	inc cursor_x
-	rts
-
-push_select:
-	; turn off rendering so we can manually update entire nametable
-	jsr ppu_off
-	jsr setup_background
-	; wait for user to release select before continuing
-	:
-		jsr gamepad_poll
-		lda gamepad
-		and #PAD_SELECT
-		bne :-
-	rts
-
-push_start:
-	inc scroll_x
-	inc scroll_y
-	; Y wraps at 240
-	lda scroll_y
-	cmp #240
-	bcc :+
-		lda #0
-		sta scroll_y
-	:
-	; when X rolls over, toggle the high bit of nametable select
-	lda scroll_x
-	bne :+
-		lda scroll_nmt
-		eor #$01
-		sta scroll_nmt
-	:
-	rts
-
-release_start:
-	lda #0
-	sta scroll_x
-	sta scroll_y
-	sta scroll_nmt
-	rts
-
-push_b:
-	jsr snap_cursor
-	lda cursor_x
-	lsr
-	lsr
-	lsr
-	tax ; X = cursor_x / 8
-	lda cursor_y
-	lsr
-	lsr
-	lsr
-	tay ; Y = cursor_y / 8
-	lda #4
-	jsr ppu_update_tile ; puts tile 4 at X/Y
-	rts
-
-push_a:
-	jsr snap_cursor
-	lda cursor_x
-	lsr
-	lsr
-	lsr
-	sta temp_x ; cursor_x / 8
-	lda cursor_y
-	lsr
-	lsr
-	lsr
-	sta temp_y ; cursor_y / 8
-	; draw a ring of 8 tiles around the cursor
-	dec temp_x ; x-1
-	dec temp_y ; y-1
-	ldx temp_x
-	ldy temp_y
-	lda #5
-	jsr ppu_update_tile
-	inc temp_x ; x
-	ldx temp_x
-	ldy temp_y
-	lda #6
-	jsr ppu_update_tile
-	inc temp_x ; x+1
-	ldx temp_x
-	ldy temp_y
-	lda #5
-	jsr ppu_update_tile
-	dec temp_x
-	dec temp_x ; x-1
-	inc temp_y ; y
-	ldx temp_x
-	ldy temp_y
-	lda #6
-	jsr ppu_update_tile
-	inc temp_x
-	inc temp_x ; x+1
-	ldx temp_x
-	ldy temp_y
-	lda #6
-	jsr ppu_update_tile
-	dec temp_x
-	dec temp_x ; x-1
-	inc temp_y ; y+1
-	ldx temp_x
-	ldy temp_y
-	lda #5
-	jsr ppu_update_tile
-	inc temp_x ; x
-	ldx temp_x
-	ldy temp_y
-	lda #6
-	jsr ppu_update_tile
-	inc temp_x ; x+1
-	ldx temp_x
-	ldy temp_y
-	lda #5
-	jsr ppu_update_tile
-	rts
-
-; snap_cursor: snap cursor to nearest tile
-snap_cursor:
-	lda cursor_x
-	clc
-	adc #4
-	and #$F8
-	sta cursor_x
-	lda cursor_y
-	clc
-	adc #4
-	and #$F8
-	sta cursor_y
-	; Y wraps at 240
-	cmp #240
-	bcc :+
-		lda #0
-		sta cursor_y
-	:
-	rts
-
-draw_cursor:
-	; four sprites centred around the currently selected tile
-	; y position (note, needs to be one line higher than sprite's appearance)
-	lda cursor_y
-	sec
-	sbc #5 ; Y-5
-	sta oam+(0*4)+0
-	sta oam+(1*4)+0
-	lda cursor_y
-	clc
-	adc #3 ; Y+3
-	sta oam+(2*4)+0
-	sta oam+(3*4)+0
-	; tile
-	lda #1
-	sta oam+(0*4)+1
-	sta oam+(1*4)+1
-	sta oam+(2*4)+1
-	sta oam+(3*4)+1
-	; attributes
-	lda #%00000000 ; no flip
-	sta oam+(0*4)+2
-	lda #%01000000 ; horizontal flip
-	sta oam+(1*4)+2
-	lda #%10000000 ; vertical flip
-	sta oam+(2*4)+2
-	lda #%11000000 ; both flip
-	sta oam+(3*4)+2
-	; x position
-	lda cursor_x
-	sec
-	sbc #4 ; X-4
-	sta oam+(0*4)+3
-	sta oam+(2*4)+3
-	lda cursor_x
-	clc
-	adc #4 ; X+4
-	sta oam+(1*4)+3
-	sta oam+(3*4)+3
-	rts
+start_game:
+    lda #1
+    sta state
+    jsr famistudio_music_stop
+    jsr ppu_off
+    rts
 
 .proc draw_row
     sta ptr
