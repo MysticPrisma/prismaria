@@ -1,11 +1,7 @@
 ;
 ; main.s
 ; Alan Gomez Pasillas, 16/08/2026
-; https://mysticprisma.github.io
-;
-
-; You may notice some odd behaviour when using the A button around the edges of the screen.
-; I will leave it as an exercise for the curious to understand what is going on.
+; https://mysticprisma.github.io/prismaria/
 ;
 
 ;
@@ -167,19 +163,18 @@ nmi:
 	lda #>oam
 	sta $4014
 	; palettes
-	lda #%10001000
-	sta $2000 ; set horizontal nametable increment
-	lda $2002
-	lda #$3F
-	sta $2006
-	stx $2006 ; set PPU address to $3F00
-	ldx #0
-	:
-		lda palette, X
-		sta $2007
-		inx
-		cpx #32
-		bcc :-
+    lda $2002 ;reset latch
+    lda #$3F
+    sta $2006
+    lda #$00
+    sta $2006
+    ldx #0
+    @pal_loop:
+        lda palette, x
+        sta $2007
+        inx
+        cpx #32
+        bcc @pal_loop
 	; nametable update
 	ldx #0
 	cpx nmt_update_len
@@ -404,15 +399,25 @@ title_animation:
 .byte $21
 .byte $0F
 
-example_palette:
+title_palette:
 .byte $0F,$30,$21,$11 ; bg0 title-screen - blue, bluelight, white
-.byte $0F,$09,$19,$29 ; bg1 green
+.byte $21,$29,$1A,$0B ; bg1 level-one
 .byte $0F,$01,$11,$21 ; bg2 blue
 .byte $0F,$00,$10,$30 ; bg3 greyscale
 .byte $0F,$18,$28,$38 ; sp0 yellow
 .byte $0F,$14,$24,$34 ; sp1 purple
 .byte $0F,$1B,$2B,$3B ; sp2 teal
 .byte $0F,$12,$22,$32 ; sp3 marine
+
+level_one_palette:
+.byte $21,$0B,$1A,$39 ; bg0 level-one
+.byte $21,$30,$20,$11 ; bg1 
+.byte $21,$30,$20,$11 ; bg2 
+.byte $21,$30,$20,$11 ; bg3 
+.byte $21,$30,$20,$11 ; sp0 
+.byte $21,$30,$20,$11 ; sp1 
+.byte $21,$30,$20,$11 ; sp2 
+.byte $21,$30,$20,$11 ; sp3 
 
 .segment "ZEROPAGE"
 temp_x:   .res 1
@@ -425,13 +430,13 @@ main:
 	; setup 
 	ldx #0
 	:
-		lda example_palette, X
+		lda title_palette, X
 		sta palette, X
 		inx
 		cpx #32
 		bcc :-
 
-	jsr setup_background
+	jsr setup_background_title
 	; show the screen
 	jsr ppu_update
 
@@ -462,6 +467,17 @@ start_game:
     sta state
     jsr famistudio_music_stop
     jsr ppu_off
+
+    ; setting palette
+    ldx #0
+    :   lda level_one_palette, x  ; Grab colors from the 2nd palette set
+        sta palette, x            ; Put them in the 1st palette slot
+        inx
+        cpx #32
+        bcc :-
+    
+    jsr setup_level_one
+    jsr ppu_update
     rts
 
 .proc draw_row
@@ -489,9 +505,8 @@ loop:
     rts
 .endproc
 
-setup_background:
-	; first nametable, start by clearing to empty
-	lda $2002 ; reset latch
+.proc clear_nametable
+    lda $2002 ; reset latch
 	lda #$20
 	sta $2006
 	lda #$00
@@ -513,7 +528,12 @@ setup_background:
 		sta $2007
 		dex
 		bne :-
-    ; Now here I will display my title
+    rts
+.endproc
+
+setup_background_title:
+	; first nametable, start by clearing to empty
+    jsr clear_nametable
 
     ; First Line
     ldy #6
@@ -602,42 +622,133 @@ setup_background:
     ldx #20
     jsr draw_row
 
-	; second nametable, fill with simple pattern
-	lda #$24
-	sta $2006
-	lda #$00
-	sta $2006
-	lda #$00
-	ldy #30
-	:
-		ldx #32
-		:
-			sta $2007
-			clc
-			adc #1
-			and #3
-			dex
-			bne :-
-		clc
-		adc #1
-		and #3
-		dey
-		bne :--
-	; 4 stripes of attribute
-	lda #0
-	ldy #4
-	:
-		ldx #16
-		:
-			sta $2007
-			dex
-			bne :-
-		clc
-		adc #%01010101
-		dey
-		bne :--
 	rts
 
+setup_level_one:
+    jsr clear_nametable
+    
+    ; Sun / Moon
+    ldy #06
+    ldx #05
+    jsr ppu_address_tile
+    lda #68
+    sta $2007
+    lda #69
+    sta $2007
+    ldy #07
+    ldx #05
+    jsr ppu_address_tile
+    lda #70
+    sta $2007
+    lda #71
+    sta $2007
+    
+    ; Stars
+    ldy #01
+    ldx #02
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    ldy #03
+    ldx #25
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    ldy #05
+    ldx #14
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    ldy #08
+    ldx #19
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    ldy #10
+    ldx #06
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    ldy #12
+    ldx #28
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    ldy #15
+    ldx #03
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    ldy #14
+    ldx #12
+    jsr ppu_address_tile
+    lda #62
+    sta $2007
+    
+    ; Ground
+    ldy #20
+    ldx #26
+    jsr ppu_address_tile
+    lda #66
+    sta $2007
+    lda #67
+    sta $2007
+    lda #64
+    sta $2007
+    lda #65
+    sta $2007
+    lda #64
+    sta $2007
+    lda #65
+    sta $2007
+    ldy #21
+    ldx #24
+    jsr ppu_address_tile
+    lda #66
+    sta $2007
+    lda #67
+    sta $2007
+    ldx #06
+    lda #65
+    :   
+        eor #01
+        cmp #64
+        sta $2007
+        dex
+        bne :-
+    ldy #22
+    ldx #20
+    jsr ppu_address_tile
+    lda #66
+    sta $2007
+    lda #67
+    sta $2007
+    ldx #10
+    lda #65
+    :   
+        eor #01
+        cmp #64
+        sta $2007
+        dex
+        bne :-
+    ldy #23
+    ldx #14
+    jsr ppu_address_tile
+    lda #66
+    sta $2007
+    lda #67
+    sta $2007
+    ldx #176
+    lda #65
+    :   
+        eor #01
+        cmp #64
+        sta $2007
+        dex
+        bne :-
+
+
+    rts
 
     ; --- Sound Engine ---
 .include "famistudio_ca65.s"
