@@ -98,6 +98,10 @@ reset:
     ldy #>music_title
     lda #1                 ; 1 = NTSC, 0 = PAL
     jsr famistudio_init
+    ldx #<music_level_one
+    ldy #>music_level_one
+    lda #1                 ; 1 = NTSC, 0 = PAL
+    jsr famistudio_init
 
     ; Play the first song (Song 0)
     lda #0
@@ -476,6 +480,8 @@ start_game:
         cpx #32
         bcc :-
     
+    lda #1
+    jsr famistudio_music_play
     jsr setup_level_one
     jsr ppu_update
     rts
@@ -753,6 +759,7 @@ setup_level_one:
     ; --- Sound Engine ---
 .include "famistudio_ca65.s"
 .include "msc-title.s"
+.include "msc-level-one.s"
 
 ;
 ; end of file
